@@ -11,6 +11,7 @@
     <header>
       <h1>Painel Administrativo</h1>
       <div>
+        <button id="exportCsv">Exportar CSV</button>
         <button id="logout">Sair</button>
       </div>
     </header>
@@ -31,6 +32,19 @@
       rows.innerHTML = data.map(f=>`<tr><td>${f.clientName||'-'}</td><td>${f.serviceDate||'-'}</td><td>${f.city||'-'}</td><td>${f.serviceRating||'-'}</td><td>${(f.message||'').slice(0,80)}</td></tr>`).join('');
     }
     document.getElementById('logout').addEventListener('click', async ()=>{ await fetch('/admin/logout'); location.href='/admin/login'; });
+    document.getElementById('exportCsv').addEventListener('click', async ()=>{
+      const res = await fetch('/api/admin/feedback/export');
+      if (res.status === 401) return location.href = '/admin/login';
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'feedbacks.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    });
     load();
   </script>
 </body>
