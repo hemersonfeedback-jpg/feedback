@@ -9,7 +9,6 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
 const AWS = require('aws-sdk');
 const multerS3 = require('multer-s3');
 const nodemailer = require('nodemailer');
@@ -30,7 +29,6 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'change_this_secret',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/atual-layout' }),
   cookie: { secure: process.env.NODE_ENV === 'production' }
 }));
 
@@ -75,9 +73,13 @@ if (process.env.AWS_S3_BUCKET && process.env.AWS_ACCESS_KEY_ID && process.env.AW
 }
 const upload = multer({ storage });
 
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/atual-layout')
-  .then(() => console.log('MongoDB conectado'))
-  .catch((err) => console.error('Erro ao conectar MongoDB:', err));
+const mongoUri = process.env.MONGODB_URI && process.env.MONGODB_URI.trim()
+  ? process.env.MONGODB_URI.trim()
+  : null;
+
+let useMemoryStore = false;
+const memoryFeedbacks = [];
+const memoryAdmins = [];
 
 const feedbackSchema = new mongoose.Schema({
   clientName: String,
@@ -95,7 +97,7 @@ const feedbackSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-const Feedback = mongoose.model('Feedback', feedbackSchema);
+const Feedback = mongoose.models.Feedback || mongoose.model('Feedback', feedbackSchema);
 
 const adminSchema = new mongoose.Schema({
   username: { type: String, unique: true },
@@ -103,15 +105,23 @@ const adminSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-const Admin = mongoose.model('Admin', adminSchema);
+const Admin = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
 
-// Ensure an admin user exists on startup (created from env vars if provided, otherwise falls back to a default)
-mongoose.connection.once('open', async () => {
+async function ensureAdminUser() {
+  const username = process.env.ADMIN_USER || 'segundo';
+  const password = process.env.ADMIN_PASS || '260579';
+
+  if (useMemoryStore) {
+    if (!memoryAdmins.some((item) => item.username === username)) {
+      const hash = await bcrypt.hash(password, 10);
+      memoryAdmins.push({ username, passwordHash: hash });
+    }
+    return;
+  }
+
   try {
     const count = await Admin.countDocuments();
     if (count === 0) {
-      const username = process.env.ADMIN_USER || 'segundo';
-      const password = process.env.ADMIN_PASS || '260579';
       const hash = await bcrypt.hash(password, 10);
       await Admin.create({ username, passwordHash: hash });
       console.log(`Admin user created: ${username}`);
@@ -119,7 +129,58 @@ mongoose.connection.once('open', async () => {
   } catch (e) {
     console.error('Error ensuring admin user:', e);
   }
-});
+}
+
+async function initializeDatabase() {
+  if (!mongoUri) {
+    console.warn('MongoDB URI não informada, usando armazenamento em memória');
+    useMemoryStore = true;
+    await ensureAdminUser();
+    return;
+  }
+
+  try {
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 3000,
+      connectTimeoutMS: 3000
+    });
+    console.log('MongoDB conectado');
+    useMemoryStore = false;
+    await ensureAdminUser();
+  } catch (err) {
+    console.warn('MongoDB indisponível, usando armazenamento em memória:', err.message);
+    useMemoryStore = true;
+    await ensureAdminUser();
+  }
+}
+
+async function saveFeedbackRecord(payload) {
+  if (useMemoryStore) {
+    const record = { ...payload, createdAt: new Date() };
+    memoryFeedbacks.push(record);
+    return record;
+  }
+
+  return new Feedback(payload).save();
+}
+
+async function listFeedbackRecords() {
+  if (useMemoryStore) {
+    return memoryFeedbacks.slice().sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  return Feedback.find().sort({ createdAt: -1 });
+}
+
+async function findAdminByUsername(username) {
+  if (useMemoryStore) {
+    return memoryAdmins.find((item) => item.username === username) || null;
+  }
+
+  return Admin.findOne({ username });
+}
+
+initializeDatabase();
 
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -131,7 +192,7 @@ app.post('/api/feedback', upload.fields([{ name: 'photos', maxCount: 5 }, { name
     const photoUrls = (files.photos || []).map((file) => `/uploads/${file.filename}`);
     const audioUrl = files.audio && files.audio[0] ? `/uploads/${files.audio[0].filename}` : null;
 
-    const feedback = new Feedback({
+    const feedback = await saveFeedbackRecord({
       clientName: req.body.clientName,
       city: req.body.city,
       serviceDate: req.body.serviceDate,
@@ -145,8 +206,6 @@ app.post('/api/feedback', upload.fields([{ name: 'photos', maxCount: 5 }, { name
       testimonialAllowed: req.body.testimonialAllowed === 'true',
       recommend: req.body.recommend === 'true'
     });
-
-    await feedback.save();
     // Send notification email if SMTP configured
     try {
       if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.EMAIL_TO) {
@@ -174,7 +233,7 @@ app.post('/api/feedback', upload.fields([{ name: 'photos', maxCount: 5 }, { name
 
 app.get('/api/feedback', async (_req, res) => {
   try {
-    const feedbacks = await Feedback.find().sort({ createdAt: -1 });
+    const feedbacks = await listFeedbackRecords();
     res.json(feedbacks);
   } catch (error) {
     res.status(500).json({ message: 'Erro ao buscar feedbacks.' });
@@ -196,7 +255,7 @@ app.get('/admin/login', (_req, res) => {
 
 app.post('/admin/login', async (req, res) => {
   const { username, password } = req.body;
-  const admin = await Admin.findOne({ username });
+  const admin = await findAdminByUsername(username);
   if (!admin) return res.status(401).json({ message: 'Invalid credentials' });
   const ok = await bcrypt.compare(password, admin.passwordHash);
   if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
@@ -215,12 +274,12 @@ function requireAdmin(req, res, next) {
 }
 
 app.get('/api/admin/feedback', requireAdmin, async (_req, res) => {
-  const feedbacks = await Feedback.find().sort({ createdAt: -1 });
+  const feedbacks = await listFeedbackRecords();
   res.json(feedbacks);
 });
 
 app.get('/api/admin/feedback/export', requireAdmin, async (_req, res) => {
-  const feedbacks = await Feedback.find().sort({ createdAt: -1 });
+  const feedbacks = await listFeedbackRecords();
   const headers = ['clientName','city','serviceDate','serviceRating','layoutExpectation','improvements','teamRating','message','audioUrl','photoUrls','testimonialAllowed','recommend','createdAt'];
   function escapeCSV(val){
     if (val === null || val === undefined) return '';
