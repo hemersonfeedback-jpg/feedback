@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel Atual Layout</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 0; background: #f8fafc; color: #0f172a; }
+      .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+      .card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,.06); }
+      .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+      .stat { padding: 16px; border-radius: 12px; background: #eff6ff; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+      .pill { display: inline-block; padding: 4px 8px; border-radius: 999px; background: #dcfce7; color: #166534; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Painel de Pós-Venda</h1>
+      <div class="card">
+        <h2>Resumo</h2>
+        <div class="stats" id="stats"></div>
+      </div>
+      <div class="card">
+        <h2>Clientes respondidos</h2>
+        <table>
+          <thead>
+            <tr><th>Cliente</th><th>Cidade</th><th>Data</th><th>Nota</th><th>Recomendaria</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+    <script>
+      async function loadData() {
+        const res = await fetch('/api/feedback');
+        const data = await res.json();
+        const stats = document.getElementById('stats');
+        const rows = document.getElementById('rows');
+        const avg = data.length ? (data.reduce((total, item) => total + (item.serviceRating || 0), 0) / data.length).toFixed(1) : '0.0';
+        stats.innerHTML = `
+          <div class="stat"><strong>${data.length}</strong><br/>Respostas</div>
+          <div class="stat"><strong>${avg}</strong><br/>Média de avaliação</div>
+          <div class="stat"><strong>${data.filter((item) => item.recommend).length}</strong><br/>Recomendam</div>
+        `;
+        rows.innerHTML = data.map((item) => `
+          <tr>
+            <td>${item.clientName || '-'}</td>
+            <td>${item.city || '-'}</td>
+            <td>${item.serviceDate || '-'}</td>
+            <td>${item.serviceRating || '-'}</td>
+            <td><span class="pill">${item.recommend ? 'Sim' : 'Não'}</span></td>
+          </tr>
+        `).join('');
+      }
+      loadData();
+    </script>
+  </body>
+</html>
