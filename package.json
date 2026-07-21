@@ -16,7 +16,7 @@
     "dotenv": "^16.4.1",
     "express": "^4.19.0",
     "mongoose": "^8.9.1",
-    "multer": "^1.19.0",
+    "multer": "^1.4.5",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
