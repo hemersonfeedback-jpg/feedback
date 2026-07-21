@@ -12,6 +12,7 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const AWS = require('aws-sdk');
 const multerS3 = require('multer-s3');
+const nodemailer = require('nodemailer');
 
 dotenv.config();
 
@@ -150,6 +151,24 @@ app.post('/api/feedback', upload.fields([{ name: 'photos', maxCount: 5 }, { name
     });
 
     await feedback.save();
+    // Send notification email if SMTP configured
+    try {
+      if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.EMAIL_TO) {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST,
+          port: Number(process.env.SMTP_PORT || 587),
+          secure: process.env.SMTP_SECURE === 'true',
+          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        });
+        const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
+        const photoLinks = (files.photos || []).map(f => (process.env.AWS_S3_BUCKET ? f.location : `${baseUrl}/uploads/${f.filename}`));
+        const audioLink = files.audio && files.audio[0] ? (process.env.AWS_S3_BUCKET ? files.audio[0].location : `${baseUrl}/uploads/${files.audio[0].filename}`) : '';
+        const mailBody = `New feedback received:\n\nClient: ${feedback.clientName}\nCity: ${feedback.city}\nDate: ${feedback.serviceDate}\nRating: ${feedback.serviceRating}\nLayout expectation: ${feedback.layoutExpectation}\nImprovements: ${feedback.improvements.join(', ')}\nTeam rating: ${feedback.teamRating}\nMessage: ${feedback.message || '-'}\nAudio: ${audioLink}\nPhotos: ${photoLinks.join(', ')}\n\nView in panel: ${baseUrl}/admin/panel`;
+        await transporter.sendMail({ from: process.env.EMAIL_FROM || process.env.SMTP_USER, to: process.env.EMAIL_TO, subject: `Novo feedback: ${feedback.clientName || 'sem nome'}`, text: mailBody });
+      }
+    } catch (mailErr) {
+      console.error('Error sending notification email:', mailErr);
+    }
     res.json({ success: true, message: 'Resposta enviada com sucesso!' });
   } catch (error) {
     console.error(error);
@@ -198,6 +217,27 @@ function requireAdmin(req, res, next) {
 app.get('/api/admin/feedback', requireAdmin, async (_req, res) => {
   const feedbacks = await Feedback.find().sort({ createdAt: -1 });
   res.json(feedbacks);
+});
+
+app.get('/api/admin/feedback/export', requireAdmin, async (_req, res) => {
+  const feedbacks = await Feedback.find().sort({ createdAt: -1 });
+  const headers = ['clientName','city','serviceDate','serviceRating','layoutExpectation','improvements','teamRating','message','audioUrl','photoUrls','testimonialAllowed','recommend','createdAt'];
+  function escapeCSV(val){
+    if (val === null || val === undefined) return '';
+    const s = typeof val === 'string' ? val : String(val);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  const rows = feedbacks.map(f => {
+    return headers.map(h => {
+      if (h === 'improvements') return escapeCSV((f.improvements||[]).join(';'));
+      if (h === 'photoUrls') return escapeCSV((f.photoUrls||[]).join(';'));
+      return escapeCSV(f[h]);
+    }).join(',');
+  });
+  const csv = headers.join(',') + '\n' + rows.join('\n');
+  res.setHeader('Content-Type','text/csv');
+  res.setHeader('Content-Disposition','attachment; filename="feedbacks.csv"');
+  res.send(csv);
 });
 
 app.get('/admin/panel', (req, res) => {
