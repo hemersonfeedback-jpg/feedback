@@ -79,26 +79,6 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/atual-lay
   .then(() => console.log('MongoDB conectado'))
   .catch((err) => console.error('Erro ao conectar MongoDB:', err));
 
-// Ensure an admin user exists on startup (created from env vars if provided)
-mongoose.connection.once('open', async () => {
-  try {
-    const count = await Admin.countDocuments();
-    if (count === 0) {
-      const username = process.env.ADMIN_USER || 'admin';
-      const password = process.env.ADMIN_PASS || null;
-      if (!password) {
-        console.warn('No ADMIN_PASS provided in env; create an admin user before deploying or set ADMIN_USER and ADMIN_PASS in Render.');
-        return;
-      }
-      const hash = await bcrypt.hash(password, 10);
-      await Admin.create({ username, passwordHash: hash });
-      console.log(`Admin user created: ${username}`);
-    }
-  } catch (e) {
-    console.error('Error ensuring admin user:', e);
-  }
-});
-
 const feedbackSchema = new mongoose.Schema({
   clientName: String,
   city: String,
@@ -124,6 +104,22 @@ const adminSchema = new mongoose.Schema({
 });
 
 const Admin = mongoose.model('Admin', adminSchema);
+
+// Ensure an admin user exists on startup (created from env vars if provided, otherwise falls back to a default)
+mongoose.connection.once('open', async () => {
+  try {
+    const count = await Admin.countDocuments();
+    if (count === 0) {
+      const username = process.env.ADMIN_USER || 'admin';
+      const password = process.env.ADMIN_PASS || 'AtualLayout2026!';
+      const hash = await bcrypt.hash(password, 10);
+      await Admin.create({ username, passwordHash: hash });
+      console.log(`Admin user created: ${username}`);
+    }
+  } catch (e) {
+    console.error('Error ensuring admin user:', e);
+  }
+});
 
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -190,6 +186,10 @@ app.get('/dashboard', (_req, res) => {
 });
 
 // Admin routes and APIs
+app.get('/admin', (_req, res) => {
+  res.redirect('/admin/login');
+});
+
 app.get('/admin/login', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin-login.html'));
 });
