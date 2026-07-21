@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Painel Admin - Atual Layout</title>
+  <style>body{font-family:Arial,Helvetica,sans-serif;background:#f8fafc;color:#0f172a}.container{max-width:1100px;margin:24px auto}table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left}header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}button{padding:8px 12px;border-radius:8px;border:none;background:#ef4444;color:#fff;cursor:pointer}</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Painel Administrativo</h1>
+      <div>
+        <button id="logout">Sair</button>
+      </div>
+    </header>
+    <section class="card">
+      <h2>Respostas</h2>
+      <table>
+        <thead><tr><th>Cliente</th><th>Data</th><th>Cidade</th><th>Nota</th><th>Mensagem</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </section>
+  </div>
+  <script>
+    async function load(){
+      const res = await fetch('/api/admin/feedback');
+      if (res.status===401) return location.href='/admin/login';
+      const data = await res.json();
+      const rows = document.getElementById('rows');
+      rows.innerHTML = data.map(f=>`<tr><td>${f.clientName||'-'}</td><td>${f.serviceDate||'-'}</td><td>${f.city||'-'}</td><td>${f.serviceRating||'-'}</td><td>${(f.message||'').slice(0,80)}</td></tr>`).join('');
+    }
+    document.getElementById('logout').addEventListener('click', async ()=>{ await fetch('/admin/logout'); location.href='/admin/login'; });
+    load();
+  </script>
+</body>
+</html>

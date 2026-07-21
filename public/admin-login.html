@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login Admin - Atual Layout</title>
+  <style>body{font-family:Arial,Helvetica,sans-serif;background:#f3f4f6}.card{background:#fff;padding:24px;border-radius:8px;max-width:420px;margin:60px auto;box-shadow:0 6px 18px rgba(0,0,0,.08)}label{display:block;margin-top:12px}input{width:100%;padding:10px;margin-top:6px;border-radius:6px;border:1px solid #cbd5e1}button{margin-top:16px;padding:10px 14px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer}</style>
+</head>
+<body>
+  <div class="card">
+    <h2>Admin - Entrar</h2>
+    <form id="login">
+      <label>Usuário<input name="username" required /></label>
+      <label>Senha<input name="password" type="password" required /></label>
+      <button type="submit">Entrar</button>
+    </form>
+    <p id="msg" style="color:red;margin-top:12px"></p>
+  </div>
+  <script>
+    document.getElementById('login').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const body = { username: fd.get('username'), password: fd.get('password') };
+      const res = await fetch('/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+      const data = await res.json();
+      if (data.success) location.href = '/admin/panel';
+      else document.getElementById('msg').textContent = data.message || 'Erro';
+    });
+  </script>
+</body>
+</html>
