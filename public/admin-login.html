@@ -23,9 +23,9 @@
       e.preventDefault();
       const fd = new FormData(e.target);
       const body = { username: fd.get('username'), password: fd.get('password') };
-      const res = await fetch('/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+      const res = await fetch('/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
       const data = await res.json();
-      if (data.success) location.href = '/admin/panel';
+      if (data.success) window.location.assign(data.redirect || '/admin/panel');
       else document.getElementById('msg').textContent = data.message || 'Erro';
     });
   </script>

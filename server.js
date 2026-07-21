@@ -16,6 +16,7 @@ const nodemailer = require('nodemailer');
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 const uploadDir = path.join(__dirname, 'public', 'uploads');
 
@@ -29,7 +30,12 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'change_this_secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: process.env.NODE_ENV === 'production' }
+  proxy: true,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'lax'
+  }
 }));
 
 app.use((req, res, next) => {
@@ -261,7 +267,7 @@ app.post('/admin/login', async (req, res) => {
   if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
   req.session.isAdmin = true;
   req.session.adminUser = admin.username;
-  res.json({ success: true });
+  res.json({ success: true, redirect: '/admin/panel' });
 });
 
 app.get('/admin/logout', (req, res) => {
