@@ -9,6 +9,9 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
+const AWS = require('aws-sdk');
+const multerS3 = require('multer-s3');
 
 dotenv.config();
 
@@ -26,7 +29,8 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'change_this_secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false }
+  store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/atual-layout' }),
+  cookie: { secure: process.env.NODE_ENV === 'production' }
 }));
 
 app.use((req, res, next) => {
@@ -37,15 +41,37 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const storage = multer.diskStorage({
-  destination: function (_req, _file, cb) {
-    cb(null, path.join(__dirname, 'public', 'uploads'));
-  },
-  filename: function (_req, file, cb) {
-    const ext = path.extname(file.originalname);
-    cb(null, `${uuidv4()}${ext}`);
-  }
-});
+let storage;
+if (process.env.AWS_S3_BUCKET && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+  AWS.config.update({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    region: process.env.AWS_REGION || 'us-east-1'
+  });
+  const s3 = new AWS.S3();
+  storage = multerS3({
+    s3: s3,
+    bucket: process.env.AWS_S3_BUCKET,
+    acl: 'public-read',
+    metadata: function (req, file, cb) {
+      cb(null, { fieldName: file.fieldname });
+    },
+    key: function (req, file, cb) {
+      const ext = path.extname(file.originalname);
+      cb(null, `${uuidv4()}${ext}`);
+    }
+  });
+} else {
+  storage = multer.diskStorage({
+    destination: function (_req, _file, cb) {
+      cb(null, path.join(__dirname, 'public', 'uploads'));
+    },
+    filename: function (_req, file, cb) {
+      const ext = path.extname(file.originalname);
+      cb(null, `${uuidv4()}${ext}`);
+    }
+  });
+}
 const upload = multer({ storage });
 
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/atual-layout')
