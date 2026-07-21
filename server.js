@@ -192,11 +192,10 @@ app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.post('/api/feedback', upload.fields([{ name: 'photos', maxCount: 5 }, { name: 'audio', maxCount: 1 }]), async (req, res) => {
+app.post('/api/feedback', upload.fields([{ name: 'photos', maxCount: 5 }]), async (req, res) => {
   try {
     const files = req.files || {};
     const photoUrls = (files.photos || []).map((file) => `/uploads/${file.filename}`);
-    const audioUrl = files.audio && files.audio[0] ? `/uploads/${files.audio[0].filename}` : null;
 
     const feedback = await saveFeedbackRecord({
       clientName: req.body.clientName,
@@ -207,7 +206,7 @@ app.post('/api/feedback', upload.fields([{ name: 'photos', maxCount: 5 }, { name
       improvements: Array.isArray(req.body.improvements) ? req.body.improvements : (req.body.improvements ? [req.body.improvements] : []),
       teamRating: Number(req.body.teamRating || 0),
       message: req.body.message,
-      audioUrl,
+      audioUrl: null,
       photoUrls,
       testimonialAllowed: req.body.testimonialAllowed === 'true',
       recommend: req.body.recommend === 'true'
@@ -223,8 +222,7 @@ app.post('/api/feedback', upload.fields([{ name: 'photos', maxCount: 5 }, { name
         });
         const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
         const photoLinks = (files.photos || []).map(f => (process.env.AWS_S3_BUCKET ? f.location : `${baseUrl}/uploads/${f.filename}`));
-        const audioLink = files.audio && files.audio[0] ? (process.env.AWS_S3_BUCKET ? files.audio[0].location : `${baseUrl}/uploads/${files.audio[0].filename}`) : '';
-        const mailBody = `New feedback received:\n\nClient: ${feedback.clientName}\nCity: ${feedback.city}\nDate: ${feedback.serviceDate}\nRating: ${feedback.serviceRating}\nLayout expectation: ${feedback.layoutExpectation}\nImprovements: ${feedback.improvements.join(', ')}\nTeam rating: ${feedback.teamRating}\nMessage: ${feedback.message || '-'}\nAudio: ${audioLink}\nPhotos: ${photoLinks.join(', ')}\n\nView in panel: ${baseUrl}/admin/panel`;
+        const mailBody = `New feedback received:\n\nClient: ${feedback.clientName}\nCity: ${feedback.city}\nDate: ${feedback.serviceDate}\nRating: ${feedback.serviceRating}\nLayout expectation: ${feedback.layoutExpectation}\nImprovements: ${feedback.improvements.join(', ')}\nTeam rating: ${feedback.teamRating}\nMessage: ${feedback.message || '-'}\nPhotos: ${photoLinks.join(', ')}\n\nView in panel: ${baseUrl}/admin/panel`;
         await transporter.sendMail({ from: process.env.EMAIL_FROM || process.env.SMTP_USER, to: process.env.EMAIL_TO, subject: `Novo feedback: ${feedback.clientName || 'sem nome'}`, text: mailBody });
       }
     } catch (mailErr) {
