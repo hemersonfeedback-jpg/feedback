@@ -110,8 +110,8 @@ mongoose.connection.once('open', async () => {
   try {
     const count = await Admin.countDocuments();
     if (count === 0) {
-      const username = process.env.ADMIN_USER || 'admin';
-      const password = process.env.ADMIN_PASS || 'AtualLayout2026!';
+      const username = process.env.ADMIN_USER || 'segundo';
+      const password = process.env.ADMIN_PASS || '260579';
       const hash = await bcrypt.hash(password, 10);
       await Admin.create({ username, passwordHash: hash });
       console.log(`Admin user created: ${username}`);
