@@ -178,6 +178,13 @@ async function listFeedbackRecords() {
   return Feedback.find().sort({ createdAt: -1 });
 }
 
+async function listPublishedTestimonials() {
+  const feedbacks = await listFeedbackRecords();
+  return feedbacks
+    .filter((item) => item.testimonialAllowed === true)
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+
 async function findAdminByUsername(username) {
   if (useMemoryStore) {
     return memoryAdmins.find((item) => item.username === username) || null;
@@ -246,6 +253,19 @@ app.get('/api/feedback', async (_req, res) => {
 
 app.get('/dashboard', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+app.get('/testimonials', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'testimonials.html'));
+});
+
+app.get('/api/testimonials', async (_req, res) => {
+  try {
+    const testimonials = await listPublishedTestimonials();
+    res.json(testimonials);
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao buscar depoimentos.' });
+  }
 });
 
 // Admin routes and APIs
