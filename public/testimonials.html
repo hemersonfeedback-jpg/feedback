@@ -18,7 +18,12 @@
       .meta { color: #64748b; font-size: 14px; }
       .stars { color: #f59e0b; letter-spacing: 2px; font-size: 16px; }
       .message { line-height: 1.65; color: #334155; background: #f8fafc; padding: 12px; border-radius: 12px; }
+      .photo-gallery { display: grid; gap: 8px; }
       .photo { width: 100%; height: 220px; object-fit: cover; border-radius: 12px; background: #e2e8f0; display: block; }
+      .photo-thumbs { display: grid; grid-template-columns: repeat(auto-fit, minmax(66px, 1fr)); gap: 8px; }
+      .photo-thumb { width: 100%; height: 64px; object-fit: cover; border-radius: 10px; border: 2px solid transparent; cursor: pointer; transition: transform .2s ease, border-color .2s ease; }
+      .photo-thumb:hover { transform: translateY(-1px); }
+      .photo-thumb.active { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16); }
       @media (max-width: 768px) {
         .photo { height: 200px; }
       }
@@ -90,19 +95,39 @@
 
           content.innerHTML = testimonials.map((item) => {
             const date = item.serviceDate ? new Date(item.serviceDate).toLocaleDateString('pt-BR') : 'Data não informada';
-            const photo = Array.isArray(item.photoUrls) && item.photoUrls.length ? item.photoUrls[0] : '';
+            const photos = Array.isArray(item.photoUrls) ? item.photoUrls.filter(Boolean) : [];
+            const primaryPhoto = photos[0] || '';
             const recommendBadge = item.recommend ? '<span class="badge">Recomendaria a Atual Layout</span>' : '<span class="badge">Cliente satisfeito</span>';
+            const photosMarkup = primaryPhoto ? `
+              <div class="photo-gallery">
+                <img class="photo" src="${escapeHtml(primaryPhoto)}" alt="Foto do cliente ${escapeHtml(item.clientName || 'cliente')}" loading="lazy" />
+                ${photos.length > 1 ? `<div class="photo-thumbs">${photos.map((photo, index) => `<img class="photo-thumb ${index === 0 ? 'active' : ''}" src="${escapeHtml(photo)}" alt="Foto ${index + 1} do cliente" loading="lazy" data-photo="${escapeHtml(photo)}" />`).join('')}</div>` : ''}
+              </div>
+            ` : '';
             return `
               <article class="card">
                 ${recommendBadge}
                 <h3>${escapeHtml(item.clientName || 'Cliente')}</h3>
                 <div class="meta">${escapeHtml(item.city || '-')} • ${escapeHtml(date)}</div>
                 <div class="pill-row">${renderStars(item.serviceRating)}</div>
-                ${photo ? `<img class="photo" src="${escapeHtml(photo)}" alt="Foto do cliente ${escapeHtml(item.clientName || 'cliente')}" />` : ''}
+                ${photosMarkup}
                 <div class="message">${escapeHtml(item.message || 'Depoimento disponível para publicação.')}</div>
               </article>
             `;
           }).join('');
+
+          document.querySelectorAll('.photo-thumb').forEach((thumb) => {
+            thumb.addEventListener('click', () => {
+              const gallery = thumb.closest('.photo-gallery');
+              const mainPhoto = gallery?.querySelector('.photo');
+              if (mainPhoto) {
+                mainPhoto.src = thumb.getAttribute('data-photo');
+              }
+              gallery?.querySelectorAll('.photo-thumb').forEach((item) => {
+                item.classList.toggle('active', item === thumb);
+              });
+            });
+          });
         } catch (error) {
           content.innerHTML = '<div class="empty">Não foi possível carregar os depoimentos.</div>';
         }

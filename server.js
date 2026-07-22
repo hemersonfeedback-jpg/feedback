@@ -47,6 +47,12 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+const hasCloudinaryConfig = Boolean(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+);
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -55,7 +61,9 @@ cloudinary.config({
 });
 
 let storage;
-if (process.env.AWS_S3_BUCKET && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+if (hasCloudinaryConfig) {
+  storage = multer.memoryStorage();
+} else if (process.env.AWS_S3_BUCKET && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
   AWS.config.update({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -86,6 +94,58 @@ if (process.env.AWS_S3_BUCKET && process.env.AWS_ACCESS_KEY_ID && process.env.AW
   });
 }
 const upload = multer({ storage });
+
+async function saveLocalFileFromBuffer(file) {
+  if (!file || !file.buffer) {
+    return null;
+  }
+
+  const ext = path.extname(file.originalname || '.bin') || '.bin';
+  const filename = `${uuidv4()}${ext}`;
+  const fullPath = path.join(uploadDir, filename);
+  fs.writeFileSync(fullPath, file.buffer);
+  return `/uploads/${filename}`;
+}
+
+async function uploadToCloudinary(file) {
+  if (!hasCloudinaryConfig) {
+    return null;
+  }
+
+  if (file.buffer) {
+    return new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: 'atual-layout-feedback', resource_type: 'image' },
+        (error, result) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(result.secure_url);
+        }
+      );
+      stream.end(file.buffer);
+    });
+  }
+
+  if (file.path) {
+    return new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: 'atual-layout-feedback', resource_type: 'image' },
+        (error, result) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(result.secure_url);
+        }
+      );
+      fs.createReadStream(file.path).pipe(stream);
+    });
+  }
+
+  throw new Error('No file content available for Cloudinary upload');
+}
 
 const mongoUri = process.env.MONGODB_URI && process.env.MONGODB_URI.trim()
   ? process.env.MONGODB_URI.trim()
@@ -212,19 +272,18 @@ app.post('/api/feedback', upload.fields([{ name: 'photos', maxCount: 5 }]), asyn
     const files = req.files || {};
     let photoUrls = [];
 
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-      photoUrls = await Promise.all((files.photos || []).map(async (file) => {
+    if (hasCloudinaryConfig) {
+      photoUrls = [];
+      for (const file of files.photos || []) {
         try {
-          const result = await cloudinary.uploader.upload(file.path || file.location || file.buffer, {
-            folder: 'atual-layout-feedback',
-            resource_type: 'image'
-          });
-          return result.secure_url;
+          const uploadedUrl = await uploadToCloudinary(file);
+          photoUrls.push(uploadedUrl || (await saveLocalFileFromBuffer(file)) || '');
         } catch (uploadError) {
-          console.error('Cloudinary upload failed:', uploadError);
-          return file.location || `/uploads/${file.filename}`;
+          console.error('Cloudinary upload failed, using fallback:', uploadError);
+          const fallbackUrl = await saveLocalFileFromBuffer(file);
+          photoUrls.push(fallbackUrl || '');
         }
-      }));
+      }
     } else {
       photoUrls = (files.photos || []).map((file) => {
         if (file.location) return file.location;
