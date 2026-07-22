@@ -6,6 +6,7 @@
     <title>Atual Layout - Pós-Venda Inteligente</title>
     <style>
       :root { color-scheme: light; }
+      * { box-sizing: border-box; }
       body { font-family: Arial, sans-serif; margin: 0; background: #f4f6fb; color: #1f2937; }
       .hero { background: linear-gradient(135deg, #0f172a, #2563eb); color: white; padding: 60px 20px; text-align: center; }
       .container { max-width: 900px; margin: 0 auto; padding: 24px; }
@@ -15,18 +16,32 @@
       input, select, textarea, button { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; margin-top: 6px; font-size: 16px; }
       button { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: 700; }
       .grid { display: grid; gap: 12px; }
+      .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+      .field { display: flex; flex-direction: column; }
+      .field.full { grid-column: 1 / -1; }
       .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
       .chip { padding: 8px 12px; border: 1px solid #93c5fd; border-radius: 999px; background: #eff6ff; }
       .rating { display: flex; gap: 10px; flex-wrap: wrap; }
-      .rating button { width: auto; padding: 10px 14px; background: #e2e8f0; color: #0f172a; }
+      .rating button { width: auto; min-width: 140px; padding: 10px 14px; background: #e2e8f0; color: #0f172a; }
       .rating button.active { background: #2563eb; color: white; }
       .hidden { display: none; }
       .success { color: green; font-weight: 700; }
       .note { color: #64748b; font-size: 14px; }
+      @media (max-width: 768px) {
+        .container { padding: 16px; }
+        .card { padding: 18px; }
+        .form-grid { grid-template-columns: 1fr; }
+        .rating { flex-direction: column; }
+        .rating button { width: 100%; }
+      }
+      @media (max-width: 480px) {
+        .hero { padding: 44px 16px; }
+      }
     </style>
   </head>
   <body>
     <section class="hero">
+      <img src="/img/logomarca.jpeg" alt="Logomarca Atual Layout" style="max-width:220px; width:100%; border-radius:16px; box-shadow:0 10px 25px rgba(0,0,0,0.2); margin-bottom:16px;" />
       <h1>Atual Layout</h1>
       <p>Formulário profissional de pós-venda inteligente</p>
     </section>
@@ -59,70 +74,98 @@
       </div>
       <form id="feedbackForm" class="card" enctype="multipart/form-data">
         <h2>Compartilhe sua experiência</h2>
-        <label>Nome do cliente</label>
-        <input name="clientName" required />
-        <label>Cidade</label>
-        <input name="city" required />
-        <label>Data do serviço</label>
-        <input name="serviceDate" type="date" required />
 
-        <label>1. Como você avalia nosso serviço?</label>
-        <div class="rating" id="serviceRating">
-          <button type="button" data-value="5">⭐⭐⭐⭐⭐ Excelente</button>
-          <button type="button" data-value="4">⭐⭐⭐⭐ Bom</button>
-          <button type="button" data-value="3">⭐⭐⭐ Regular</button>
-          <button type="button" data-value="2">⭐⭐ Ruim</button>
-          <button type="button" data-value="1">⭐ Péssimo</button>
-        </div>
-        <input type="hidden" name="serviceRating" id="serviceRatingInput" />
-
-        <label>2. O layout ficou como você esperava?</label>
-        <select name="layoutExpectation">
-          <option value="Superou minhas expectativas">Superou minhas expectativas</option>
-          <option value="Sim">Sim</option>
-          <option value="Parcialmente">Parcialmente</option>
-          <option value="Não">Não</option>
-        </select>
-
-        <label>3. Você percebeu melhorias?</label>
-        <div class="chips" id="improvements">
-          <label class="chip"><input type="checkbox" name="improvements" value="Organização" /> Organização</label>
-          <label class="chip"><input type="checkbox" name="improvements" value="Visual da loja" /> Visual da loja</label>
-          <label class="chip"><input type="checkbox" name="improvements" value="Facilidade para os clientes" /> Facilidade para os clientes</label>
-          <label class="chip"><input type="checkbox" name="improvements" value="Exposição dos produtos" /> Exposição dos produtos</label>
-          <label class="chip"><input type="checkbox" name="improvements" value="Aumento das vendas" /> Aumento das vendas</label>
-          <label class="chip"><input type="checkbox" name="improvements" value="Ainda não consegui avaliar" /> Ainda não consegui avaliar</label>
+        <div class="form-grid">
+          <div class="field">
+            <label>Nome do cliente</label>
+            <input name="clientName" required />
+          </div>
+          <div class="field">
+            <label>Cidade</label>
+            <input name="city" required />
+          </div>
+          <div class="field full">
+            <label>Data do serviço</label>
+            <input name="serviceDate" type="date" required />
+          </div>
         </div>
 
-        <label>4. Como foi nossa equipe?</label>
-        <div class="rating" id="teamRating">
-          <button type="button" data-value="5">⭐⭐⭐⭐⭐</button>
-          <button type="button" data-value="4">⭐⭐⭐⭐</button>
-          <button type="button" data-value="3">⭐⭐⭐</button>
-          <button type="button" data-value="2">⭐⭐</button>
-          <button type="button" data-value="1">⭐</button>
+        <div class="field full">
+          <label>1. Como você avalia nosso serviço?</label>
+          <div class="rating" id="serviceRating">
+            <button type="button" data-value="5">⭐⭐⭐⭐⭐ Excelente</button>
+            <button type="button" data-value="4">⭐⭐⭐⭐ Bom</button>
+            <button type="button" data-value="3">⭐⭐⭐ Regular</button>
+            <button type="button" data-value="2">⭐⭐ Ruim</button>
+            <button type="button" data-value="1">⭐ Péssimo</button>
+          </div>
+          <input type="hidden" name="serviceRating" id="serviceRatingInput" />
         </div>
-        <input type="hidden" name="teamRating" id="teamRatingInput" />
 
-        <label>5. Crítica, sugestão ou elogio</label>
-        <textarea name="message" rows="4"></textarea>
-        <label>Enviar fotos da loja</label>
-        <input type="file" name="photos" accept="image/*" multiple />
+        <div class="field full">
+          <label>2. O layout ficou como você esperava?</label>
+          <select name="layoutExpectation">
+            <option value="Superou minhas expectativas">Superou minhas expectativas</option>
+            <option value="Sim">Sim</option>
+            <option value="Parcialmente">Parcialmente</option>
+            <option value="Não">Não</option>
+          </select>
+        </div>
 
-        <label>6. Nota para a Atual Layout</label>
-        <input type="number" name="overallNote" min="0" max="10" />
+        <div class="field full">
+          <label>3. Você percebeu melhorias?</label>
+          <div class="chips" id="improvements">
+            <label class="chip"><input type="checkbox" name="improvements" value="Organização" /> Organização</label>
+            <label class="chip"><input type="checkbox" name="improvements" value="Visual da loja" /> Visual da loja</label>
+            <label class="chip"><input type="checkbox" name="improvements" value="Facilidade para os clientes" /> Facilidade para os clientes</label>
+            <label class="chip"><input type="checkbox" name="improvements" value="Exposição dos produtos" /> Exposição dos produtos</label>
+            <label class="chip"><input type="checkbox" name="improvements" value="Aumento das vendas" /> Aumento das vendas</label>
+            <label class="chip"><input type="checkbox" name="improvements" value="Ainda não consegui avaliar" /> Ainda não consegui avaliar</label>
+          </div>
+        </div>
 
-        <label>Autorizaria usar seu depoimento?</label>
-        <select name="testimonialAllowed">
-          <option value="true">Sim</option>
-          <option value="false">Não</option>
-        </select>
+        <div class="field full">
+          <label>4. Como foi nossa equipe?</label>
+          <div class="rating" id="teamRating">
+            <button type="button" data-value="5">⭐⭐⭐⭐⭐</button>
+            <button type="button" data-value="4">⭐⭐⭐⭐</button>
+            <button type="button" data-value="3">⭐⭐⭐</button>
+            <button type="button" data-value="2">⭐⭐</button>
+            <button type="button" data-value="1">⭐</button>
+          </div>
+          <input type="hidden" name="teamRating" id="teamRatingInput" />
+        </div>
 
-        <label>Indicaria a Atual Layout?</label>
-        <select name="recommend">
-          <option value="true">Sim</option>
-          <option value="false">Não</option>
-        </select>
+        <div class="field full">
+          <label>5. Crítica, sugestão ou elogio</label>
+          <textarea name="message" rows="4"></textarea>
+        </div>
+
+        <div class="field full">
+          <label>Enviar fotos da loja</label>
+          <input type="file" name="photos" accept="image/*" multiple />
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label>6. Nota para a Atual Layout</label>
+            <input type="number" name="overallNote" min="0" max="10" />
+          </div>
+          <div class="field">
+            <label>Autorizaria usar seu depoimento?</label>
+            <select name="testimonialAllowed">
+              <option value="true">Sim</option>
+              <option value="false">Não</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label>Indicaria a Atual Layout?</label>
+            <select name="recommend">
+              <option value="true">Sim</option>
+              <option value="false">Não</option>
+            </select>
+          </div>
+        </div>
 
         <button type="submit" style="margin-top:16px;">Enviar resposta</button>
         <p id="message" class="success hidden"></p>

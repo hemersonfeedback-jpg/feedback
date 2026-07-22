@@ -12,6 +12,7 @@ const session = require('express-session');
 const AWS = require('aws-sdk');
 const multerS3 = require('multer-s3');
 const nodemailer = require('nodemailer');
+const cloudinary = require('cloudinary').v2;
 
 dotenv.config();
 
@@ -45,6 +46,13 @@ app.use((req, res, next) => {
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true
+});
 
 let storage;
 if (process.env.AWS_S3_BUCKET && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
@@ -202,7 +210,28 @@ app.get('/', (_req, res) => {
 app.post('/api/feedback', upload.fields([{ name: 'photos', maxCount: 5 }]), async (req, res) => {
   try {
     const files = req.files || {};
-    const photoUrls = (files.photos || []).map((file) => `/uploads/${file.filename}`);
+    let photoUrls = [];
+
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+      photoUrls = await Promise.all((files.photos || []).map(async (file) => {
+        try {
+          const result = await cloudinary.uploader.upload(file.path || file.location || file.buffer, {
+            folder: 'atual-layout-feedback',
+            resource_type: 'image'
+          });
+          return result.secure_url;
+        } catch (uploadError) {
+          console.error('Cloudinary upload failed:', uploadError);
+          return file.location || `/uploads/${file.filename}`;
+        }
+      }));
+    } else {
+      photoUrls = (files.photos || []).map((file) => {
+        if (file.location) return file.location;
+        if (file.filename) return `/uploads/${file.filename}`;
+        return '';
+      }).filter(Boolean);
+    }
 
     const feedback = await saveFeedbackRecord({
       clientName: req.body.clientName,

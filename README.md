@@ -13,6 +13,13 @@ Aplicação web para coleta de feedback de clientes, com formulário moderno e p
 - PORT: porta do servidor
 - BASE_URL: URL pública do deploy
 
+### Exemplo de configuração do MongoDB Atlas
+1. Crie um cluster no MongoDB Atlas.
+2. Obtenha a string de conexão do cluster.
+3. Defina a variável de ambiente MONGODB_URI no ambiente do projeto, por exemplo:
+   `MONGODB_URI=mongodb+srv://<usuario>:<senha>@<cluster>/<dbname>?retryWrites=true&w=majority`
+4. Reinicie a aplicação para que ela passe a usar o banco em nuvem.
+
 ## Deploy
 - GitHub: conecte o repositório ao GitHub
 - Render: crie um Web Service apontando para este repositório

@@ -88,6 +88,8 @@ test('testimonial endpoint returns only feedbacks authorized for publication', a
     authorizedPayload.append('testimonialAllowed', 'true');
     authorizedPayload.append('recommend', 'true');
 
+    authorizedPayload.append('photos', new Blob(['fake-image'], { type: 'image/jpeg' }), 'sample.jpg');
+
     const unauthorizedPayload = new FormData();
     unauthorizedPayload.append('clientName', 'Bruno');
     unauthorizedPayload.append('city', 'Campinas');
@@ -110,6 +112,7 @@ test('testimonial endpoint returns only feedbacks authorized for publication', a
     assert.equal(testimonials.length, 1);
     assert.equal(testimonials[0].clientName, 'Ana');
     assert.equal(testimonials[0].testimonialAllowed, true);
+    assert.ok(testimonials[0].photoUrls?.some((url) => url.includes('/uploads/')));
   } finally {
     if (child.exitCode === null) {
       child.kill();
