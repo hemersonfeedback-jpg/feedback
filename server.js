@@ -182,8 +182,8 @@ const adminSchema = new mongoose.Schema({
 const Admin = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
 
 async function ensureAdminUser() {
-  const username = process.env.ADMIN_USER || 'segundo';
-  const password = process.env.ADMIN_PASS || '260579';
+  const username = process.env.ADMIN_USER || 'hemerson';
+  const password = process.env.ADMIN_PASS || 'admin2307';
 
   if (useMemoryStore) {
     if (!memoryAdmins.some((item) => item.username === username)) {
