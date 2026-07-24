@@ -365,6 +365,10 @@ app.get('/admin/login', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin-login.html'));
 });
 
+app.get('/admin-login', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin-login.html'));
+});
+
 app.post('/admin/login', async (req, res) => {
   const { username, password } = req.body;
   const admin = await findAdminByUsername(username);

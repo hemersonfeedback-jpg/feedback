@@ -10,3 +10,17 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASS
+        value: troque_esta_senha
+      - key: BASE_URL
+        value: https://seu-app.onrender.com
+      - key: CLOUDINARY_CLOUD_NAME
+        value: seu-cloud-name
+      - key: CLOUDINARY_API_KEY
+        value: sua-api-key
+      - key: CLOUDINARY_API_SECRET
+        value: seu-api-secret

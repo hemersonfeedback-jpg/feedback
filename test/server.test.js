@@ -59,6 +59,36 @@ test('server stays up without MongoDB and serves the admin login page', async ()
   assert.match(output, /Servidor rodando/);
 });
 
+test('admin-login alias serves the admin login page', async () => {
+  const port = 3102;
+  const child = spawn(process.execPath, ['server.js'], {
+    cwd: path.resolve(__dirname, '..'),
+    env: { ...process.env, MONGODB_URI: '', PORT: String(port) }
+  });
+
+  let output = '';
+  child.stdout.on('data', (data) => {
+    output += data.toString();
+  });
+  child.stderr.on('data', (data) => {
+    output += data.toString();
+  });
+
+  try {
+    await waitForServer(`http://127.0.0.1:${port}/admin/login`);
+    const response = await fetch(`http://127.0.0.1:${port}/admin-login`);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, /Admin - Entrar|Acesse o painel administrativo/);
+  } finally {
+    if (child.exitCode === null) {
+      child.kill();
+    }
+  }
+
+  assert.match(output, /Servidor rodando/);
+});
+
 test('testimonial endpoint returns only feedbacks authorized for publication', async () => {
   const port = 3101;
   const child = spawn(process.execPath, ['server.js'], {
