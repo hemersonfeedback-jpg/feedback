@@ -250,6 +250,25 @@ async function listPublishedTestimonials() {
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 }
 
+async function deleteFeedbackRecord(id) {
+  if (useMemoryStore) {
+    const idx = memoryFeedbacks.findIndex((f) => f._id === id || f._id?.toString() === id);
+    if (idx === -1) return null;
+    const deleted = memoryFeedbacks.splice(idx, 1)[0];
+    return deleted;
+  }
+
+  return Feedback.findByIdAndDelete(id);
+}
+
+async function getFeedbackById(id) {
+  if (useMemoryStore) {
+    return memoryFeedbacks.find((f) => f._id === id || f._id?.toString() === id) || null;
+  }
+
+  return Feedback.findById(id);
+}
+
 async function findAdminByUsername(username) {
   if (useMemoryStore) {
     return memoryAdmins.find((item) => item.username === username) || null;
@@ -417,10 +436,10 @@ app.get('/api/admin/feedback/export', requireAdmin, async (_req, res) => {
 
 app.delete('/api/admin/feedback/:id', requireAdmin, async (req, res) => {
   try {
-    const feedback = await Feedback.findById(req.params.id);
+    const feedback = await getFeedbackById(req.params.id);
     if (!feedback) return res.status(404).json({ message: 'Feedback não encontrado.' });
 
-    if (hasCloudinaryConfig && Array.isArray(feedback.photoPublicIds)) {
+    if (hasCloudinaryConfig && Array.isArray(feedback.photoPublicIds) && feedback.photoPublicIds.length > 0) {
       for (const publicId of feedback.photoPublicIds) {
         try {
           await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
@@ -430,7 +449,7 @@ app.delete('/api/admin/feedback/:id', requireAdmin, async (req, res) => {
       }
     }
 
-    await Feedback.findByIdAndDelete(req.params.id);
+    await deleteFeedbackRecord(req.params.id);
     res.json({ success: true, message: 'Feedback excluído com sucesso.' });
   } catch (error) {
     console.error('Erro ao excluir feedback:', error);
