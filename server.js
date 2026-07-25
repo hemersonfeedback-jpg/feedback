@@ -112,34 +112,30 @@ async function uploadToCloudinary(file) {
     return null;
   }
 
+  const uploadOptions = { folder: 'atual-layout-feedback', resource_type: 'image' };
+
   if (file.buffer) {
     return new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { folder: 'atual-layout-feedback', resource_type: 'image' },
-        (error, result) => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          resolve(result.secure_url);
+      const stream = cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
+        if (error) {
+          reject(error);
+          return;
         }
-      );
+        resolve(result);
+      });
       stream.end(file.buffer);
     });
   }
 
   if (file.path) {
     return new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { folder: 'atual-layout-feedback', resource_type: 'image' },
-        (error, result) => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          resolve(result.secure_url);
+      const stream = cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
+        if (error) {
+          reject(error);
+          return;
         }
-      );
+        resolve(result);
+      });
       fs.createReadStream(file.path).pipe(stream);
     });
   }
@@ -166,6 +162,7 @@ const feedbackSchema = new mongoose.Schema({
   message: String,
   audioUrl: String,
   photoUrls: [String],
+  photoPublicIds: [String],
   testimonialAllowed: Boolean,
   recommend: Boolean,
   createdAt: { type: Date, default: Date.now }
@@ -272,12 +269,14 @@ app.post('/api/feedback', upload.fields([{ name: 'photos', maxCount: 5 }]), asyn
     const files = req.files || {};
     let photoUrls = [];
 
+    let photoPublicIds = [];
     if (hasCloudinaryConfig) {
       photoUrls = [];
       for (const file of files.photos || []) {
         try {
-          const uploadedUrl = await uploadToCloudinary(file);
-          photoUrls.push(uploadedUrl || (await saveLocalFileFromBuffer(file)) || '');
+          const uploaded = await uploadToCloudinary(file);
+          photoUrls.push(uploaded.secure_url || (await saveLocalFileFromBuffer(file)) || '');
+          if (uploaded.public_id) photoPublicIds.push(uploaded.public_id);
         } catch (uploadError) {
           console.error('Cloudinary upload failed, using fallback:', uploadError);
           const fallbackUrl = await saveLocalFileFromBuffer(file);
@@ -303,6 +302,7 @@ app.post('/api/feedback', upload.fields([{ name: 'photos', maxCount: 5 }]), asyn
       message: req.body.message,
       audioUrl: null,
       photoUrls,
+      photoPublicIds,
       testimonialAllowed: req.body.testimonialAllowed === 'true',
       recommend: req.body.recommend === 'true'
     });
@@ -413,6 +413,29 @@ app.get('/api/admin/feedback/export', requireAdmin, async (_req, res) => {
   res.setHeader('Content-Type','text/csv');
   res.setHeader('Content-Disposition','attachment; filename="feedbacks.csv"');
   res.send(csv);
+});
+
+app.delete('/api/admin/feedback/:id', requireAdmin, async (req, res) => {
+  try {
+    const feedback = await Feedback.findById(req.params.id);
+    if (!feedback) return res.status(404).json({ message: 'Feedback não encontrado.' });
+
+    if (hasCloudinaryConfig && Array.isArray(feedback.photoPublicIds)) {
+      for (const publicId of feedback.photoPublicIds) {
+        try {
+          await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+        } catch (err) {
+          console.error(`Falha ao excluir imagem Cloudinary ${publicId}:`, err.message || err);
+        }
+      }
+    }
+
+    await Feedback.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Feedback excluído com sucesso.' });
+  } catch (error) {
+    console.error('Erro ao excluir feedback:', error);
+    res.status(500).json({ message: 'Erro ao excluir feedback.' });
+  }
 });
 
 app.get('/admin/panel', (req, res) => {

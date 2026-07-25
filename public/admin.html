@@ -22,7 +22,7 @@
     <section class="card">
       <h2>Respostas</h2>
       <table>
-        <thead><tr><th>Cliente</th><th>Data</th><th>Cidade</th><th>Nota</th><th>Mensagem</th></tr></thead>
+        <thead><tr><th>Cliente</th><th>Data</th><th>Cidade</th><th>Nota</th><th>Mensagem</th><th>Ações</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </section>
@@ -46,8 +46,20 @@
       if (res.status===401) return location.href='/admin/login';
       const data = await res.json();
       const rows = document.getElementById('rows');
-      rows.innerHTML = data.map(f=>`<tr><td>${f.clientName||'-'}</td><td>${formatDateBr(f.serviceDate)}</td><td>${f.city||'-'}</td><td>${f.serviceRating||'-'}</td><td>${(f.message||'').slice(0,80)}</td></tr>`).join('');
+      rows.innerHTML = data.map(f=>`<tr><td>${f.clientName||'-'}</td><td>${formatDateBr(f.serviceDate)}</td><td>${f.city||'-'}</td><td>${f.serviceRating||'-'}</td><td>${(f.message||'').slice(0,80)}</td><td><button class="btn-danger" onclick="deleteFeedback('${f._id}')">Excluir</button></td></tr>`).join('');
     }
+
+    async function deleteFeedback(id) {
+      if (!confirm('Deseja realmente excluir este feedback e as imagens associadas?')) return;
+      const res = await fetch(`/api/admin/feedback/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        load();
+      } else {
+        const error = await res.json();
+        alert(error.message || 'Falha ao excluir o feedback.');
+      }
+    }
+
     document.getElementById('logout').addEventListener('click', async ()=>{ await fetch('/admin/logout'); location.href='/admin/login'; });
     document.getElementById('backHome').addEventListener('click', ()=> location.href='/');
     document.getElementById('exportPdf').addEventListener('click', ()=> window.print());
