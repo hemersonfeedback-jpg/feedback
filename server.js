@@ -227,13 +227,14 @@ async function initializeDatabase() {
 
 async function saveFeedbackRecord(payload) {
   if (useMemoryStore) {
-    const record = { ...payload, createdAt: new Date() };
+    const record = { _id: uuidv4(), ...payload, createdAt: new Date() };
     memoryFeedbacks.push(record);
     return record;
   }
 
   return new Feedback(payload).save();
 }
+
 
 async function listFeedbackRecords() {
   if (useMemoryStore) {
