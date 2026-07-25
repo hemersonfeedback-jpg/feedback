@@ -4,11 +4,17 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const feedbackSchema = new mongoose.Schema({
-  name: String,
-  email: String,
+  clientName: String,
+  city: String,
+  serviceDate: String,
+  serviceRating: Number,
+  layoutExpectation: String,
+  improvements: [String],
+  teamRating: Number,
   message: String,
-  publicar: Boolean,
-  photo: String,
+  testimonialAllowed: Boolean,
+  recommend: Boolean,
+  photoUrls: [String],
   photoPublicIds: [String],
   createdAt: Date
 });
@@ -31,11 +37,11 @@ async function viewFeedbacks() {
       console.log(`✅ Total: ${feedbacks.length} feedback(s)\n`);
       
       feedbacks.forEach((f, i) => {
-        console.log(`${i + 1}. ${f.name.toUpperCase()}`);
-        console.log(`   📧 Email: ${f.email}`);
-        console.log(`   📝 Mensagem: ${f.message.substring(0, 80)}${f.message.length > 80 ? '...' : ''}`);
-        console.log(`   🔓 Publicar: ${f.publicar ? 'Sim' : 'Não'}`);
-        console.log(`   📷 Foto: ${f.photo ? 'Sim' : 'Não'}`);
+        console.log(`${i + 1}. ${(f.clientName || 'Sem nome').toUpperCase()}`);
+        console.log(`   📍 Cidade: ${f.city || '-'}`);
+        console.log(`   ⭐ Nota: ${f.serviceRating || '-'}`);
+        console.log(`   📝 Mensagem: ${(f.message || '').substring(0, 80)}${(f.message || '').length > 80 ? '...' : ''}`);
+        console.log(`   📷 Fotos: ${f.photoUrls ? f.photoUrls.length : 0}`);
         console.log(`   📅 Data: ${new Date(f.createdAt).toLocaleString('pt-BR')}`);
         console.log(`   ID: ${f._id}`);
         console.log('');

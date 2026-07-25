@@ -4,7 +4,52 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Painel Admin - Atual Layout</title>
-  <style>body{font-family:Arial,Helvetica,sans-serif;background:#f8fafc;color:#0f172a}.container{max-width:1100px;margin:24px auto}.card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.06)}table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left}header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap}header .actions{display:flex;gap:8px;flex-wrap:wrap}button{padding:10px 14px;border-radius:999px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:700;transition:transform .15s ease,opacity .15s ease}button:hover{transform:translateY(-1px)}.btn-danger{background:#ef4444}.btn-secondary{background:#64748b}.btn-outline{background:#f8fafc;color:#334155;border:1px solid #cbd5e1}@media print{body{background:#fff}.actions{display:none!important}.container{max-width:none;margin:0}.card{box-shadow:none;border:1px solid #e2e8f0}}</style>
+  <style>
+    * { box-sizing: border-box; }
+    body{font-family:Arial,Helvetica,sans-serif;background:#f8fafc;color:#0f172a;margin:0}
+    .container{max-width:1100px;margin:24px auto;padding:0 16px}
+    .card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
+    h2{margin-top:0;margin-bottom:16px}
+    
+    /* Desktop Table */
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left}
+    
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+    header .actions{display:flex;gap:8px;flex-wrap:wrap}
+    button{padding:10px 14px;border-radius:999px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:700;transition:transform .15s ease,opacity .15s ease}
+    button:hover{transform:translateY(-1px)}
+    .btn-danger{background:#ef4444;width:100%}
+    .btn-secondary{background:#64748b}
+    .btn-outline{background:#f8fafc;color:#334155;border:1px solid #cbd5e1}
+    
+    @media (max-width:768px) {
+      .container{margin:12px auto;padding:0 8px}
+      .card{padding:12px}
+      header{flex-direction:column;align-items:flex-start;gap:8px}
+      header div:first-child h1{font-size:20px}
+      header .actions{width:100%;gap:6px}
+      header .actions button{flex:1;font-size:12px;padding:8px 10px}
+      
+      /* Mobile Cards Layout */
+      table{display:none}
+      #mobileList{display:block}
+      .feedback-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:12px}
+      .feedback-card .row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px}
+      .feedback-card .label{font-weight:700;color:#64748b;min-width:80px}
+      .feedback-card .value{flex:1;text-align:right;word-break:break-word}
+      .feedback-card .message-box{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px;margin:8px 0;font-size:12px}
+      .feedback-card .actions{width:100%;margin-top:8px}
+    }
+    
+    @media print{
+      body{background:#fff}
+      .actions{display:none!important}
+      .container{max-width:none;margin:0;padding:0}
+      .card{box-shadow:none;border:1px solid #e2e8f0}
+      #mobileList{display:none}
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -14,17 +59,18 @@
         <p style="margin:4px 0 0;color:#64748b;">Gerencie respostas, exporte dados e acompanhe o pós-venda.</p>
       </div>
       <div class="actions">
-        <button id="backHome" class="btn-secondary">Voltar ao formulário</button>
+        <button id="backHome" class="btn-secondary">Voltar</button>
         <button id="exportPdf" class="btn-outline">Exportar PDF</button>
         <button id="logout" class="btn-danger">Sair</button>
       </div>
     </header>
     <section class="card">
       <h2>Respostas</h2>
-      <table>
+      <table id="desktopTable">
         <thead><tr><th>Cliente</th><th>Data</th><th>Cidade</th><th>Nota</th><th>Mensagem</th><th>Ações</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
+      <div id="mobileList"></div>
     </section>
   </div>
   <script>
@@ -45,8 +91,23 @@
       const res = await fetch('/api/admin/feedback');
       if (res.status===401) return location.href='/admin/login';
       const data = await res.json();
+      
+      // Desktop table
       const rows = document.getElementById('rows');
-      rows.innerHTML = data.map(f=>`<tr><td>${f.clientName||'-'}</td><td>${formatDateBr(f.serviceDate)}</td><td>${f.city||'-'}</td><td>${f.serviceRating||'-'}</td><td>${(f.message||'').slice(0,80)}</td><td><button class="btn-danger" onclick="deleteFeedback('${f._id}')">Excluir</button></td></tr>`).join('');
+      rows.innerHTML = data.map(f=>`<tr><td>${f.clientName||'-'}</td><td>${formatDateBr(f.serviceDate)}</td><td>${f.city||'-'}</td><td>${f.serviceRating||'-'}</td><td>${(f.message||'').slice(0,60)}...</td><td><button class="btn-danger" onclick="deleteFeedback('${f._id}')">Excluir</button></td></tr>`).join('');
+      
+      // Mobile cards
+      const mobileList = document.getElementById('mobileList');
+      mobileList.innerHTML = data.map(f=>`
+        <div class="feedback-card">
+          <div class="row"><span class="label">Cliente:</span><span class="value">${f.clientName||'-'}</span></div>
+          <div class="row"><span class="label">Data:</span><span class="value">${formatDateBr(f.serviceDate)}</span></div>
+          <div class="row"><span class="label">Cidade:</span><span class="value">${f.city||'-'}</span></div>
+          <div class="row"><span class="label">Nota:</span><span class="value">${f.serviceRating||'-'}</span></div>
+          <div class="message-box"><strong>Mensagem:</strong> ${f.message||'-'}</div>
+          <button class="btn-danger" onclick="deleteFeedback('${f._id}')">Excluir este feedback</button>
+        </div>
+      `).join('');
     }
 
     async function deleteFeedback(id) {
